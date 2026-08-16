@@ -1,5 +1,21 @@
 import React, { useState } from 'react';
-import { X, Download, Upload, RotateCcw, Building, Sparkles, Key, Eye, EyeOff, CheckCircle2, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
+import {
+  X,
+  Download,
+  Upload,
+  RotateCcw,
+  Building,
+  Sparkles,
+  Key,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
+  RefreshCw,
+  Image as ImageIcon,
+  Trash2,
+} from 'lucide-react';
 import { useAccounting } from '../context/AccountingContext';
 import { testGeminiApiKey } from '../utils/geminiAiService';
 
@@ -25,6 +41,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [periodEnd, setPeriodEnd] = useState(settings.periodEnd);
   const [preparedBy, setPreparedBy] = useState(settings.preparedBy || '');
   const [approvedBy, setApprovedBy] = useState(settings.approvedBy || '');
+  const [customLogoUrl, setCustomLogoUrl] = useState(settings.customLogoUrl || '');
   const [geminiApiKey, setGeminiApiKey] = useState(settings.geminiApiKey || '');
   const [aiModelPreference, setAiModelPreference] = useState(settings.aiModelPreference || 'gemini-2.5-flash');
   const [showApiKey, setShowApiKey] = useState(false);
@@ -36,6 +53,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [importStatus, setImportStatus] = useState<string>('');
 
   if (!isOpen) return null;
+
+  const handleFileUploadLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Ukuran file logo maksimal 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        setCustomLogoUrl(base64);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleTestKey = async () => {
     if (!geminiApiKey.trim()) {
@@ -66,6 +102,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       periodEnd,
       preparedBy,
       approvedBy,
+      customLogoUrl,
       geminiApiKey: geminiApiKey.trim(),
       aiModelPreference,
     });
@@ -220,7 +257,74 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
             {/* Profile Section */}
             <div className="space-y-4">
-              <h4 className="font-bold text-sm text-[#1A1A1A] font-editorial-serif">Profil Entitas</h4>
+              <h4 className="font-bold text-sm text-[#1A1A1A] font-editorial-serif">Profil & Logo Entitas</h4>
+
+              {/* Logo Customizer */}
+              <div className="p-3.5 bg-[#FAF9F6] border border-[#E6E0D6] rounded-xl space-y-3">
+                <label className="block font-semibold text-[#1A1A1A] text-xs">
+                  Logo Entitas / Perusahaan Anda
+                </label>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  {/* Logo Preview Box */}
+                  <div className="w-16 h-16 rounded-xl bg-[#FFFFFF] border-2 border-dashed border-[#D3CBC0] flex items-center justify-center p-1.5 overflow-hidden flex-shrink-0 relative group shadow-2xs">
+                    {customLogoUrl ? (
+                      <img
+                        src={customLogoUrl}
+                        alt="Preview Logo"
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-[#8C877E]">
+                        <ImageIcon className="w-6 h-6" />
+                        <span className="text-[9px] mt-0.5">Default</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Upload Controls */}
+                  <div className="flex-1 w-full space-y-2">
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1A1A1A] text-[#F9F8F6] hover:bg-[#2F2C28] text-xs font-bold rounded-lg transition-colors shadow-2xs">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Pilih File Logo (PNG/JPG/SVG)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUploadLogo}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {customLogoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomLogoUrl('')}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2] border border-[#FECACA] text-xs font-semibold rounded-lg transition-colors"
+                          title="Hapus logo khusus"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type="url"
+                        value={customLogoUrl}
+                        onChange={(e) => setCustomLogoUrl(e.target.value)}
+                        placeholder="Atau tempelkan tautan URL gambar (https://...)"
+                        className="w-full px-3 py-1.5 bg-[#FFFFFF] border border-[#D3CBC0] rounded-lg text-xs font-editorial-mono focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
+                      />
+                    </div>
+                    <p className="text-[11px] text-[#8C877E]">
+                      Logo otomatis muncul di Header atas, laporan keuangan, dan <strong>Favicon Tab Browser</strong> Anda. Ukuran disarankan rasio 1:1 (persegi).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-semibold text-[#1A1A1A] mb-1">Nama Entitas / Perusahaan</label>
                 <input
@@ -360,4 +464,3 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     </div>
   );
 };
-
