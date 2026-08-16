@@ -123,6 +123,9 @@ export interface EntitySettings {
   currency: string;
   initialCash: number;
   aiApiKey?: string;
+  geminiApiKey?: string;
+  aiModelPreference?: string;
+  aiPromptStyle?: 'detailed' | 'concise';
   preparedBy: string;
   approvedBy: string;
 }
