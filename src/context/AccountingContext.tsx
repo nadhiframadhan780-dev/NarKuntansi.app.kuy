@@ -82,9 +82,27 @@ export const AccountingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, []);
 
-  // 2. Auto-save to LocalStorage
+  // 2. Auto-save to LocalStorage & Dynamic Favicon update
   useEffect(() => {
     if (!isLoaded) return;
+
+    // Update browser tab favicon dynamically if custom logo is set
+    try {
+      let favicon = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+      if (!favicon) {
+        favicon = document.createElement('link');
+        favicon.rel = 'icon';
+        document.head.appendChild(favicon);
+      }
+      if (settings.customLogoUrl) {
+        favicon.href = settings.customLogoUrl;
+      } else {
+        favicon.href = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%231A1A1A%22/><text y=%2270%22 x=%2222%22 font-size=%2265%22 font-family=%22serif%22 fill=%22%23F9F8F6%22>N</text></svg>';
+      }
+    } catch {
+      // ignore DOM manipulation error in non-browser env
+    }
+
     const timeout = setTimeout(() => {
       const stateToSave: AppState = {
         version: '1.0.0',
