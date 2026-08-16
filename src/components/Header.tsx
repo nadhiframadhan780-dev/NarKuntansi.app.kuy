@@ -20,12 +20,14 @@ import { exportAllReportsToExcel } from '../utils/excelExporter';
 interface HeaderProps {
   onOpenParser: () => void;
   onOpenCalculator: () => void;
+  onOpenAiConsultant?: () => void;
   onOpenSettings: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenParser,
   onOpenCalculator,
+  onOpenAiConsultant,
   onOpenSettings,
 }) => {
   const {
@@ -157,13 +159,25 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            {/* AI CPA Consultant Tab Shortcut */}
+            {onOpenAiConsultant && (
+              <button
+                onClick={onOpenAiConsultant}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-[#166534] bg-[#DCFCE7] hover:bg-[#BBF7D0] border border-[#86EFAC] transition-all shadow-2xs"
+                title="Tanya AI Akuntan / Bahas Soal Kasus"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#16A34A]" />
+                <span className="hidden sm:inline">AI Akuntan</span>
+              </button>
+            )}
+
             {/* AI / Smart Parser */}
             <button
               onClick={onOpenParser}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#1A1A1A] bg-[#F4F1EA] hover:bg-[#EBE5DB] border border-[#D3CBC0] transition-all shadow-2xs"
               title="Parser Soal Cerita Akuntansi"
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#8C877E]" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-[#5C5852]" />
               <span className="hidden sm:inline">Parser Soal</span>
             </button>
 
@@ -191,7 +205,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenSettings}
               className="p-2 rounded-lg text-[#5C5852] hover:text-[#1A1A1A] hover:bg-[#F4F1EA] transition-colors border border-[#D3CBC0]"
-              title="Pengaturan Entitas & Cadangan Data"
+              title="Pengaturan Entitas, Kunci API Gemini, & Cadangan Data"
             >
               <Settings className="w-4 h-4" />
             </button>
