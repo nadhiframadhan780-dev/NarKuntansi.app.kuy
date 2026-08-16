@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Check, AlertTriangle, ArrowRight, BookOpen, RefreshCw } from 'lucide-react';
+import { X, Sparkles, Check, AlertTriangle, ArrowRight, BookOpen, RefreshCw, Key, ShieldCheck } from 'lucide-react';
 import { Account, AccountingStandard } from '../types/accounting';
-import { ParsedTransactionDraft, parseTransactionsWithAI } from '../utils/transactionParser';
+import { ParsedTransactionDraft, parseStoryProblemRuleBased } from '../utils/transactionParser';
+import { parseTransactionsWithGeminiAI } from '../utils/geminiAiService';
+import { useAccounting } from '../context/AccountingContext';
 import { formatRupiah } from '../utils/formatters';
 
 interface SmartParserModalProps {
@@ -55,10 +57,12 @@ export const SmartParserModal: React.FC<SmartParserModalProps> = ({
   accounts,
   standard,
 }) => {
+  const { settings } = useAccounting();
   const [textInput, setTextInput] = useState<string>('');
   const [drafts, setDrafts] = useState<ParsedTransactionDraft[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [isAiPowered, setIsAiPowered] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -70,14 +74,34 @@ export const SmartParserModal: React.FC<SmartParserModalProps> = ({
   const handleParse = async () => {
     if (!textInput.trim()) return;
     setIsLoading(true);
-    setStatusMessage('Sedang menganalisis teks transaksi...');
+    setStatusMessage('Sedang menganalisis teks transaksi dengan AI...');
 
     try {
-      const result = await parseTransactionsWithAI(textInput, accounts, standard);
-      setDrafts(result.drafts);
-      setStatusMessage(result.message || `Ditemukan ${result.drafts.length} transaksi berpasangan.`);
-    } catch (err: any) {
-      setStatusMessage('Gagal menganalisis. Silakan coba lagi.');
+      // 1. Try Gemini AI with custom or server API key
+      const aiResult = await parseTransactionsWithGeminiAI({
+        text: textInput,
+        standard,
+        coaList: accounts,
+        apiKey: settings.geminiApiKey,
+        model: settings.aiModelPreference,
+      });
+
+      if (aiResult.drafts && aiResult.drafts.length > 0) {
+        setDrafts(aiResult.drafts);
+        setIsAiPowered(true);
+        setStatusMessage(aiResult.message || `Berhasil dianalisis oleh Google Gemini AI (${aiResult.drafts.length} transaksi).`);
+      } else {
+        // 2. Fallback to offline rule-based parser
+        const localDrafts = parseStoryProblemRuleBased(textInput, accounts, standard);
+        setDrafts(localDrafts);
+        setIsAiPowered(false);
+        setStatusMessage(`Dianalisis menggunakan Parser Lokal (${localDrafts.length} transaksi).`);
+      }
+    } catch {
+      const localDrafts = parseStoryProblemRuleBased(textInput, accounts, standard);
+      setDrafts(localDrafts);
+      setIsAiPowered(false);
+      setStatusMessage(`Dianalisis menggunakan Parser Lokal (${localDrafts.length} transaksi).`);
     } finally {
       setIsLoading(false);
     }
@@ -101,6 +125,8 @@ export const SmartParserModal: React.FC<SmartParserModalProps> = ({
     setDrafts([]);
     setTextInput('');
   };
+
+  const hasApiKey = Boolean(settings.geminiApiKey?.trim());
 
   return (
     <div className="fixed inset-0 z-50 bg-[#1A1A1A]/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
@@ -151,10 +177,21 @@ export const SmartParserModal: React.FC<SmartParserModalProps> = ({
               className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] font-editorial-mono text-[#1A1A1A]"
             />
 
-            <div className="flex items-center justify-between mt-3">
-              <span className="text-xs text-[#5C5852]">
-                Standar Aktif: <strong className="text-[#1A1A1A]">{standard}</strong>
-              </span>
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[#5C5852]">
+                  Standar Aktif: <strong className="text-[#1A1A1A]">{standard}</strong>
+                </span>
+                {hasApiKey ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#166534] bg-[#DCFCE7] px-2 py-0.5 rounded border border-[#BBF7D0]">
+                    <ShieldCheck className="w-3 h-3" /> Gemini AI Aktif
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#5C5852] bg-[#EFECE5] px-2 py-0.5 rounded">
+                    <Sparkles className="w-3 h-3 text-[#B45309]" /> Mode Cerdas Dual-Engine
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={handleParse}
