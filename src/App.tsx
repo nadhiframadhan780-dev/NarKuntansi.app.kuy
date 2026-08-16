@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import {
   BookOpen,
-  FileText,
   Layers,
-  Scale,
+  FileSpreadsheet,
   TableProperties,
   TrendingUp,
   Lock,
-  Calculator,
   ListTree,
-  Plus,
+  Calculator,
   Sparkles,
-  ChevronRight,
-  Info,
+  Plus,
+  PlusCircle,
+  AlertCircle
 } from 'lucide-react';
-import { AccountingProvider, useAccounting } from './context/AccountingContext';
+import { useAccounting } from './context/AccountingContext';
 import { Header } from './components/Header';
+import { BalanceIndicator } from './components/BalanceIndicator';
 import { JournalView } from './views/JournalView';
 import { LedgerView } from './views/LedgerView';
 import { TrialBalanceView } from './views/TrialBalanceView';
@@ -24,10 +24,11 @@ import { FinancialStatementsView } from './views/FinancialStatementsView';
 import { ClosingEntriesView } from './views/ClosingEntriesView';
 import { CoaView } from './views/CoaView';
 import { CalculatorView } from './views/CalculatorView';
+import { AiConsultantView } from './views/AiConsultantView';
 import { TransactionModal } from './components/TransactionModal';
 import { SmartParserModal } from './components/SmartParserModal';
 import { SettingsModal } from './views/SettingsModal';
-import { Transaction } from './types/accounting';
+import { formatRupiah } from './utils/formatters';
 
 type ActiveTab =
   | 'journal'
@@ -37,7 +38,8 @@ type ActiveTab =
   | 'financialStatements'
   | 'closing'
   | 'coa'
-  | 'calculator';
+  | 'calculator'
+  | 'aiConsultant';
 
 const TABS: Array<{
   id: ActiveTab;
@@ -46,95 +48,103 @@ const TABS: Array<{
   icon: React.ComponentType<{ className?: string }>;
   step: string;
 }> = [
-  { id: 'journal', label: 'Jurnal', sublabel: 'Umum & Penyesuaian', icon: FileText, step: '01' },
-  { id: 'ledger', label: 'Buku Besar', sublabel: 'Posting Akun', icon: BookOpen, step: '02' },
-  { id: 'trialBalance', label: 'Neraca Saldo', sublabel: 'Uji Keseimbangan', icon: Scale, step: '03' },
+  { id: 'journal', label: 'Jurnal Umum', sublabel: 'Pencatatan Transaksi', icon: BookOpen, step: '01' },
+  { id: 'ledger', label: 'Buku Besar', sublabel: 'Akun Bentuk T & Saldo', icon: Layers, step: '02' },
+  { id: 'trialBalance', label: 'Neraca Saldo', sublabel: 'Validasi Keseimbangan', icon: FileSpreadsheet, step: '03' },
   { id: 'worksheet', label: 'Kertas Kerja', sublabel: 'Neraca Lajur 10 Kolom', icon: TableProperties, step: '04' },
   { id: 'financialStatements', label: 'Laporan Keuangan', sublabel: 'Laba Rugi & Neraca', icon: TrendingUp, step: '05' },
   { id: 'closing', label: 'Jurnal Penutup', sublabel: 'Closing & Reversing', icon: Lock, step: '06' },
+  { id: 'aiConsultant', label: 'AI Akuntan', sublabel: 'Konsultan CPA & Soal', icon: Sparkles, step: 'AI' },
   { id: 'coa', label: 'Bagan Akun', sublabel: 'Chart of Accounts', icon: ListTree, step: 'COA' },
   { id: 'calculator', label: 'Kalkulator', sublabel: 'Depresiasi & Rasio', icon: Calculator, step: 'CALC' },
 ];
 
-function MainContent() {
-  const { accounts, addTransaction, updateTransaction, addMultipleTransactions, standard, settings } = useAccounting();
+export function App() {
+  const {
+    standard,
+    transactions,
+    accounts,
+    addTransaction,
+    isBalanced,
+    totalDebit,
+    totalCredit,
+    difference,
+  } = useAccounting();
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('journal');
-
-  // Modal States
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
-  const [txModalEditing, setTxModalEditing] = useState<Transaction | null>(null);
-  const [txModalDefaultCategory, setTxModalDefaultCategory] = useState<'umum' | 'penyesuaian'>('umum');
-
   const [isParserModalOpen, setIsParserModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
-  const handleOpenTransactionModal = (tx?: Transaction, defaultCat: 'umum' | 'penyesuaian' = 'umum') => {
-    setTxModalEditing(tx || null);
-    setTxModalDefaultCategory(defaultCat);
-    setIsTxModalOpen(true);
-  };
-
-  const handleSaveTransaction = (txData: Omit<Transaction, 'id'>) => {
-    if (txModalEditing) {
-      updateTransaction(txModalEditing.id, txData);
-    } else {
-      addTransaction(txData);
-    }
-  };
-
-  const handleImportBatch = (drafts: any[]) => {
-    addMultipleTransactions(drafts);
-    setIsParserModalOpen(false);
+  const handleBulkImportTransactions = (newTransactions: any[]) => {
+    newTransactions.forEach((tx) => {
+      addTransaction(tx);
+    });
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F8F6] text-[#1A1A1A] flex flex-col font-editorial-sans selection:bg-[#E6E0D6] selection:text-[#1A1A1A]">
-      {/* Editorial Top Masthead */}
+    <div className="min-h-screen bg-[#F4F1EA] text-[#1A1A1A] flex flex-col font-editorial-sans selection:bg-[#1A1A1A] selection:text-[#F9F8F6]">
+      {/* Top Header */}
       <Header
         onOpenParser={() => setIsParserModalOpen(true)}
         onOpenCalculator={() => setActiveTab('calculator')}
+        onOpenAiConsultant={() => setActiveTab('aiConsultant')}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
       />
 
-      {/* Cycle Navigation Bar - Editorial Style */}
-      <div className="bg-[#FFFFFF] border-b border-[#E6E0D6] sticky top-16 sm:top-20 z-30 shadow-2xs">
+      {/* Navigation Subheader / Workflow Stepper */}
+      <nav className="bg-[#FFFFFF] border-b border-[#E6E0D6] sticky top-0 z-30 shadow-2xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex items-center space-x-1 overflow-x-auto py-2.5 scrollbar-none">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2.5 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
-                    isActive
-                      ? 'bg-[#1A1A1A] text-[#F9F8F6] shadow-xs'
-                      : 'text-[#5C5852] hover:text-[#1A1A1A] hover:bg-[#F4F1EA]'
-                  }`}
-                >
-                  <span
-                    className={`font-editorial-mono text-[10px] px-1.5 py-0.5 rounded ${
-                      isActive ? 'bg-[#33302C] text-[#E6E0D6]' : 'bg-[#EFECE5] text-[#8C877E]'
+          <div className="flex items-center justify-between gap-2 overflow-x-auto py-2.5 no-scrollbar">
+            <div className="flex items-center gap-1.5 min-w-max">
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`group flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-150 relative ${
+                      isActive
+                        ? 'bg-[#1A1A1A] text-[#F9F8F6] font-semibold shadow-xs'
+                        : 'text-[#5C5852] hover:text-[#1A1A1A] hover:bg-[#FAF9F6]'
                     }`}
                   >
-                    {tab.step}
-                  </span>
-                  <div className="flex flex-col text-left">
-                    <span className="leading-tight font-medium">{tab.label}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </div>
+                    <span
+                      className={`text-[10px] font-editorial-mono px-1.5 py-0.5 rounded ${
+                        isActive
+                          ? 'bg-[#333333] text-[#86EFAC]'
+                          : 'bg-[#EFECE5] text-[#8C877E] group-hover:text-[#1A1A1A]'
+                      }`}
+                    >
+                      {tab.step}
+                    </span>
+                    <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="whitespace-nowrap font-medium">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-      {/* Main View Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            {/* Quick Action Button */}
+            <div className="hidden md:flex items-center gap-2 pl-4 border-l border-[#E6E0D6] flex-shrink-0">
+              <button
+                onClick={() => setIsTxModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#1A1A1A] text-[#F9F8F6] hover:bg-[#2F2C28] rounded-lg text-xs font-bold transition-all shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Transaksi Baru</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'journal' && (
           <JournalView
-            onOpenTransactionModal={handleOpenTransactionModal}
+            onOpenNewTransaction={() => setIsTxModalOpen(true)}
             onOpenParser={() => setIsParserModalOpen(true)}
           />
         )}
@@ -149,24 +159,37 @@ function MainContent() {
 
         {activeTab === 'closing' && <ClosingEntriesView />}
 
+        {activeTab === 'aiConsultant' && (
+          <AiConsultantView
+            onOpenSettings={() => setIsSettingsModalOpen(true)}
+            onOpenSmartParser={() => setIsParserModalOpen(true)}
+          />
+        )}
+
         {activeTab === 'coa' && <CoaView />}
 
         {activeTab === 'calculator' && <CalculatorView />}
       </main>
 
-      {/* Editorial Footer */}
-      <footer className="bg-[#FFFFFF] border-t border-[#E6E0D6] py-6 text-xs text-[#5C5852] mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-editorial-serif font-bold text-[#1A1A1A]">NarKuntansi</span>
-            <span className="text-[#8C877E]">•</span>
-            <span>Standar Aktif: <strong className="text-[#1A1A1A]">{standard}</strong></span>
-            <span className="text-[#8C877E]">•</span>
-            <span>{settings.entityName}</span>
+      {/* Global Balance Indicator Bar (Bottom) */}
+      <footer className="bg-[#FFFFFF] border-t border-[#E6E0D6] py-2.5 px-4 sm:px-6 sticky bottom-0 z-20 shadow-lg">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-editorial-mono">
+          <div className="flex items-center gap-4">
+            <span className="text-[#5C5852]">
+              Standar: <strong className="text-[#1A1A1A] font-bold">{standard}</strong>
+            </span>
+            <span className="text-[#D3CBC0]">|</span>
+            <span className="text-[#5C5852]">
+              Total Transaksi: <strong className="text-[#1A1A1A]">{transactions.length}</strong>
+            </span>
           </div>
-          <div className="text-[#8C877E] text-[11px] font-editorial-mono">
-            Siklus Akuntansi Berpasangan (Double-Entry) Sesuai Standar Akuntansi Keuangan Indonesia
-          </div>
+
+          <BalanceIndicator
+            isBalanced={isBalanced}
+            totalDebit={totalDebit}
+            totalCredit={totalCredit}
+            difference={difference}
+          />
         </div>
       </footer>
 
@@ -174,16 +197,12 @@ function MainContent() {
       <TransactionModal
         isOpen={isTxModalOpen}
         onClose={() => setIsTxModalOpen(false)}
-        onSave={handleSaveTransaction}
-        editTransaction={txModalEditing}
-        accounts={accounts}
-        defaultCategory={txModalDefaultCategory}
       />
 
       <SmartParserModal
         isOpen={isParserModalOpen}
         onClose={() => setIsParserModalOpen(false)}
-        onImportBatch={handleImportBatch}
+        onImportTransactions={handleBulkImportTransactions}
         accounts={accounts}
         standard={standard}
       />
@@ -196,10 +215,4 @@ function MainContent() {
   );
 }
 
-export default function App() {
-  return (
-    <AccountingProvider>
-      <MainContent />
-    </AccountingProvider>
-  );
-}
+export default App;
