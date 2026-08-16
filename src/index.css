@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --color-paper: #F9F8F6;
+  --color-paper-pure: #FFFFFF;
+  --color-paper-card: #FCFBF9;
+  --color-paper-muted: #F3EFEA;
+  --color-paper-warm: #EFECE5;
+  --color-border-warm: #E6E0D6;
+  --color-border-strong: #D3CBC0;
+
+  --color-ink: #1A1A1A;
+  --color-ink-light: #2D2B28;
+  --color-ink-muted: #5C5852;
+  --color-ink-subtle: #8C877E;
+
+  --color-accent-ink: #1A1A1A;
+  --color-accent-crimson: #881337;
+  --color-accent-forest: #14532D;
+  --color-accent-amber: #92400E;
+  --color-accent-navy: #1E3A8A;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #F9F8F6;
+  color: #1A1A1A;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-editorial-serif {
+  font-family: var(--font-serif);
+}
+
+.font-editorial-sans {
+  font-family: var(--font-sans);
+}
+
+.font-editorial-mono {
+  font-family: var(--font-mono);
+}
+
+/* Classical Accounting Double Bottom Rule */
+.accounting-total-border {
+  border-top: 1px solid #1A1A1A;
+  border-bottom: 3px double #1A1A1A;
+}
+
+.accounting-single-border {
+  border-top: 1px solid #1A1A1A;
+}
+
+/* Custom delicate scrollbars matching editorial paper */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F4F1EA;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D5CDC0;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B8ADA0;
+}
+
