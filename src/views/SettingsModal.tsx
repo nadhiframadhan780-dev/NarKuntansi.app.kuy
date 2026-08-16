@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Download, Upload, RotateCcw, Building } from 'lucide-react';
+import { X, Download, Upload, RotateCcw, Building, Sparkles, Key, Eye, EyeOff, CheckCircle2, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 import { useAccounting } from '../context/AccountingContext';
+import { testGeminiApiKey } from '../utils/geminiAiService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -24,9 +25,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [periodEnd, setPeriodEnd] = useState(settings.periodEnd);
   const [preparedBy, setPreparedBy] = useState(settings.preparedBy || '');
   const [approvedBy, setApprovedBy] = useState(settings.approvedBy || '');
+  const [geminiApiKey, setGeminiApiKey] = useState(settings.geminiApiKey || '');
+  const [aiModelPreference, setAiModelPreference] = useState(settings.aiModelPreference || 'gemini-2.5-flash');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isTestingKey, setIsTestingKey] = useState(false);
+  const [testResult, setTestResult] = useState<{ status: 'idle' | 'success' | 'error'; message: string }>({
+    status: settings.geminiApiKey ? 'success' : 'idle',
+    message: settings.geminiApiKey ? 'Kunci tersimpan di peramban' : '',
+  });
   const [importStatus, setImportStatus] = useState<string>('');
 
   if (!isOpen) return null;
+
+  const handleTestKey = async () => {
+    if (!geminiApiKey.trim()) {
+      setTestResult({ status: 'error', message: 'Silakan ketik atau tempelkan Kunci API Gemini Anda terlebih dahulu.' });
+      return;
+    }
+
+    setIsTestingKey(true);
+    setTestResult({ status: 'idle', message: 'Menguji koneksi ke Google Gemini AI...' });
+
+    const res = await testGeminiApiKey(geminiApiKey, aiModelPreference);
+    setIsTestingKey(false);
+    if (res.valid) {
+      setTestResult({ status: 'success', message: res.message });
+      // Auto save the tested working key
+      updateSettings({ geminiApiKey: geminiApiKey.trim(), aiModelPreference });
+    } else {
+      setTestResult({ status: 'error', message: res.message });
+    }
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +66,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       periodEnd,
       preparedBy,
       approvedBy,
+      geminiApiKey: geminiApiKey.trim(),
+      aiModelPreference,
     });
     onClose();
   };
@@ -66,7 +97,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         <div className="px-6 py-4 bg-[#1A1A1A] text-[#F9F8F6] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Building className="w-5 h-5 text-[#D3CBC0]" />
-            <h3 className="text-lg font-bold font-editorial-serif">Pengaturan Entitas & Cadangan Sistem</h3>
+            <h3 className="text-lg font-bold font-editorial-serif">Pengaturan Entitas & AI Gemini</h3>
           </div>
           <button
             onClick={onClose}
@@ -78,78 +109,190 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-6 text-xs sm:text-sm font-editorial-sans">
-          <form onSubmit={handleSave} className="space-y-4">
-            <div>
-              <label className="block font-semibold text-[#1A1A1A] mb-1">Nama Entitas / Perusahaan</label>
-              <input
-                type="text"
-                required
-                value={entityName}
-                onChange={(e) => setEntityName(e.target.value)}
-                className="w-full px-3 py-2 bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A]"
-              />
-            </div>
-
-            <div>
-              <label className="block font-semibold text-[#1A1A1A] mb-1">Alamat Entitas</label>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="w-full px-3 py-2 bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A]"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block font-semibold text-[#1A1A1A] mb-1">Awal Periode Pembukuan</label>
-                <input
-                  type="date"
-                  required
-                  value={periodStart}
-                  onChange={(e) => setPeriodStart(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A] font-editorial-mono"
-                />
+          <form onSubmit={handleSave} className="space-y-6">
+            {/* AI Gemini Section */}
+            <div className="p-4 rounded-xl bg-[#FAF9F6] border border-[#E6E0D6] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-[#1A1A1A] text-[#86EFAC] rounded-lg">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-[#1A1A1A] font-editorial-serif">
+                      Kunci API Google Gemini (AI Akuntan CPA)
+                    </h4>
+                    <p className="text-[11px] text-[#5C5852]">
+                      Untuk analisis soal cerita otomatis & konsultasi akuntansi tanpa batas token.
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1A1A1A] hover:underline"
+                >
+                  Dapatkan API Key Gratis <ExternalLink className="w-3 h-3" />
+                </a>
               </div>
+
               <div>
-                <label className="block font-semibold text-[#1A1A1A] mb-1">Akhir Periode Pembukuan</label>
-                <input
-                  type="date"
-                  required
-                  value={periodEnd}
-                  onChange={(e) => setPeriodEnd(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A] font-editorial-mono"
-                />
+                <label className="block font-semibold text-[#1A1A1A] mb-1">
+                  Gemini API Key
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    value={geminiApiKey}
+                    onChange={(e) => {
+                      setGeminiApiKey(e.target.value);
+                      setTestResult({ status: 'idle', message: '' });
+                    }}
+                    placeholder="AIzaSy..."
+                    className="w-full pl-8 pr-20 py-2 bg-[#FFFFFF] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A] font-editorial-mono text-xs"
+                  />
+                  <Key className="w-4 h-4 text-[#8C877E] absolute left-2.5 pointer-events-none" />
+                  <div className="absolute right-1.5 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="p-1 text-[#8C877E] hover:text-[#1A1A1A]"
+                      title={showApiKey ? 'Sembunyikan' : 'Tampilkan'}
+                    >
+                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleTestKey}
+                      disabled={isTestingKey || !geminiApiKey.trim()}
+                      className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
+                        isTestingKey || !geminiApiKey.trim()
+                          ? 'bg-[#EFECE5] text-[#8C877E] cursor-not-allowed'
+                          : 'bg-[#1A1A1A] text-[#F9F8F6] hover:bg-[#2F2C28]'
+                      }`}
+                    >
+                      {isTestingKey ? <RefreshCw className="w-3 h-3 animate-spin" /> : 'Uji Kunci'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block font-semibold text-[#1A1A1A] mb-1 text-[11px]">
+                    Model Gemini
+                  </label>
+                  <select
+                    value={aiModelPreference}
+                    onChange={(e) => setAiModelPreference(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-[#FFFFFF] border border-[#D3CBC0] rounded-lg text-xs font-editorial-sans"
+                  >
+                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (Cepat & Cerdas - Rekomendasi)</option>
+                    <option value="gemini-3.7-flash">Gemini 3.7 Flash (Terkini)</option>
+                    <option value="gemini-2.5-pro">Gemini 2.5 Pro (Penalaran Mendalam)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-[#1A1A1A] mb-1 text-[11px]">
+                    Status AI
+                  </label>
+                  <div className="flex items-center gap-1.5 py-1.5 px-2.5 bg-[#FFFFFF] border border-[#D3CBC0] rounded-lg text-xs">
+                    {testResult.status === 'success' ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-[#16A34A] flex-shrink-0" />
+                        <span className="text-[#166534] font-medium truncate">{testResult.message || 'AI Siap Digunakan'}</span>
+                      </>
+                    ) : testResult.status === 'error' ? (
+                      <>
+                        <AlertCircle className="w-4 h-4 text-[#DC2626] flex-shrink-0" />
+                        <span className="text-[#991B1B] font-medium truncate">{testResult.message}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-[#D3CBC0]" />
+                        <span className="text-[#5C5852]">Belum diuji / Menggunakan mode lokal</span>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Profile Section */}
+            <div className="space-y-4">
+              <h4 className="font-bold text-sm text-[#1A1A1A] font-editorial-serif">Profil Entitas</h4>
               <div>
-                <label className="block font-semibold text-[#1A1A1A] mb-1">Disusun Oleh (Staff Akuntansi)</label>
+                <label className="block font-semibold text-[#1A1A1A] mb-1">Nama Entitas / Perusahaan</label>
                 <input
                   type="text"
-                  value={preparedBy}
-                  onChange={(e) => setPreparedBy(e.target.value)}
+                  required
+                  value={entityName}
+                  onChange={(e) => setEntityName(e.target.value)}
                   className="w-full px-3 py-2 bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A]"
                 />
               </div>
+
               <div>
-                <label className="block font-semibold text-[#1A1A1A] mb-1">Disetujui Oleh (Direktur / CPA)</label>
+                <label className="block font-semibold text-[#1A1A1A] mb-1">Alamat Entitas</label>
                 <input
                   type="text"
-                  value={approvedBy}
-                  onChange={(e) => setApprovedBy(e.target.value)}
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
                   className="w-full px-3 py-2 bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A]"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-[#1A1A1A] mb-1">Awal Periode Pembukuan</label>
+                  <input
+                    type="date"
+                    required
+                    value={periodStart}
+                    onChange={(e) => setPeriodStart(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A] font-editorial-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-[#1A1A1A] mb-1">Akhir Periode Pembukuan</label>
+                  <input
+                    type="date"
+                    required
+                    value={periodEnd}
+                    onChange={(e) => setPeriodEnd(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A] font-editorial-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-[#1A1A1A] mb-1">Disusun Oleh (Staff Akuntansi)</label>
+                  <input
+                    type="text"
+                    value={preparedBy}
+                    onChange={(e) => setPreparedBy(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-[#1A1A1A] mb-1">Disetujui Oleh (Direktur / CPA)</label>
+                  <input
+                    type="text"
+                    value={approvedBy}
+                    onChange={(e) => setApprovedBy(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A]"
+                  />
+                </div>
               </div>
             </div>
 
             <div className="flex justify-end pt-2">
               <button
                 type="submit"
-                className="px-5 py-2 text-xs font-bold text-[#F9F8F6] bg-[#1A1A1A] hover:bg-[#2F2C28] rounded-lg shadow-xs transition-all"
+                className="px-5 py-2.5 text-xs font-bold text-[#F9F8F6] bg-[#1A1A1A] hover:bg-[#2F2C28] rounded-lg shadow-xs transition-all"
               >
-                Simpan Profil Entitas
+                Simpan Seluruh Pengaturan & Kunci AI
               </button>
             </div>
           </form>
@@ -217,3 +360,4 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     </div>
   );
 };
+
