@@ -122,6 +122,7 @@ export interface EntitySettings {
   periodEnd: string;
   currency: string;
   initialCash: number;
+  customLogoUrl?: string;
   aiApiKey?: string;
   geminiApiKey?: string;
   aiModelPreference?: string;
