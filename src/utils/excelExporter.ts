@@ -256,6 +256,10 @@ export function buildGeneralJournalWorkbook(wb: ExcelJS.Workbook, transactions: 
   return ws;
 }
 
+export function buildLedgerSheet(wb: ExcelJS.Workbook, accounts: Account[], transactions: Transaction[], settings: EntitySettings, standard: AccountingStandard): ExcelJS.Worksheet {
+  return buildLedgerWorkbook(wb, accounts, transactions, settings, standard);
+}
+
 /**
  * 2. Sheet Buku Besar
  */
