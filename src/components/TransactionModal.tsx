@@ -10,6 +10,7 @@ interface TransactionModalProps {
   editTransaction?: Transaction | null;
   accounts: Account[];
   defaultCategory?: 'umum' | 'penyesuaian';
+  existingTransactions?: Transaction[];
 }
 
 export const TransactionModal: React.FC<TransactionModalProps> = ({
@@ -19,6 +20,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   editTransaction,
   accounts,
   defaultCategory = 'umum',
+  existingTransactions = [],
 }) => {
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [refNumber, setRefNumber] = useState<string>('JU-001');
@@ -29,6 +31,22 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     { accountCode: accounts[0]?.code || '101', accountName: accounts[0]?.name || 'Kas', debit: 0, credit: 0 },
     { accountCode: accounts[1]?.code || '301', accountName: accounts[1]?.name || 'Modal', debit: 0, credit: 0 },
   ]);
+
+  // Helper to calculate sequential professional journal reference code (JU-xxx, AJP-xxx)
+  const getNextRefNumber = (cat: string) => {
+    const isAjp = cat === 'penyesuaian';
+    const prefix = isAjp ? 'AJP' : 'JU';
+    const regex = new RegExp(`^${prefix}-(\\d+)`, 'i');
+    const numbers = existingTransactions
+      .filter((t) => (isAjp ? t.category === 'penyesuaian' : t.category === 'umum'))
+      .map((t) => {
+        const m = (t.refNumber || '').match(regex);
+        return m ? parseInt(m[1], 10) : 0;
+      })
+      .filter((n) => !isNaN(n) && n > 0);
+    const nextNum = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+    return `${prefix}-${String(nextNum).padStart(3, '0')}`;
+  };
 
   useEffect(() => {
     if (editTransaction) {
@@ -45,18 +63,26 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           credit: e.credit || 0,
         }))
       );
-    } else {
+    } else if (isOpen) {
+      const initialCat = defaultCategory === 'penyesuaian' ? 'penyesuaian' : 'umum';
       setDate(new Date().toISOString().slice(0, 10));
-      setRefNumber(defaultCategory === 'penyesuaian' ? 'AJP-001' : 'JU-001');
+      setRefNumber(getNextRefNumber(initialCat));
       setDescription('');
-      setCategory(defaultCategory);
+      setCategory(initialCat);
       setNotes('');
       setEntries([
         { accountCode: accounts[0]?.code || '101', accountName: accounts[0]?.name || 'Kas', debit: 0, credit: 0 },
         { accountCode: accounts[1]?.code || '301', accountName: accounts[1]?.name || 'Modal', debit: 0, credit: 0 },
       ]);
     }
-  }, [editTransaction, isOpen, defaultCategory, accounts]);
+  }, [editTransaction, isOpen, defaultCategory, accounts, existingTransactions]);
+
+  const handleCategoryChange = (newCat: 'umum' | 'penyesuaian') => {
+    setCategory(newCat);
+    if (!editTransaction) {
+      setRefNumber(getNextRefNumber(newCat));
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -161,10 +187,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               <label className="block text-xs font-semibold text-[#1A1A1A] mb-1">Kategori Jurnal</label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
+                onChange={(e) => handleCategoryChange(e.target.value as any)}
                 className="w-full px-3 py-2 text-xs sm:text-sm bg-[#F9F8F6] border border-[#D3CBC0] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1A1A1A] text-[#1A1A1A]"
               >
-                <option value="umum">Jurnal Umum</option>
+                <option value="umum">Jurnal Umum (JU)</option>
                 <option value="penyesuaian">Jurnal Penyesuaian (AJP)</option>
               </select>
             </div>
