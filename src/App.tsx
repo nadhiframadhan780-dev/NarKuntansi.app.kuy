@@ -17,6 +17,7 @@ import {
 import { AccountingProvider, useAccounting } from './context/AccountingContext';
 import { Header } from './components/Header';
 import { JournalView } from './views/JournalView';
+import { AdjustingJournalView } from './views/AdjustingJournalView';
 import { LedgerView } from './views/LedgerView';
 import { TrialBalanceView } from './views/TrialBalanceView';
 import { WorksheetView } from './views/WorksheetView';
@@ -32,6 +33,7 @@ import { Transaction } from './types/accounting';
 
 type ActiveTab =
   | 'journal'
+  | 'adjusting'
   | 'ledger'
   | 'trialBalance'
   | 'worksheet'
@@ -48,12 +50,13 @@ const TABS: Array<{
   icon: React.ComponentType<{ className?: string }>;
   step: string;
 }> = [
-  { id: 'journal', label: 'Jurnal', sublabel: 'Umum & Penyesuaian', icon: FileText, step: '01' },
-  { id: 'ledger', label: 'Buku Besar', sublabel: 'Posting Akun', icon: BookOpen, step: '02' },
-  { id: 'trialBalance', label: 'Neraca Saldo', sublabel: 'Uji Keseimbangan', icon: Scale, step: '03' },
-  { id: 'worksheet', label: 'Kertas Kerja', sublabel: 'Neraca Lajur 10 Kolom', icon: TableProperties, step: '04' },
-  { id: 'financialStatements', label: 'Laporan Keuangan', sublabel: 'Laba Rugi & Neraca', icon: TrendingUp, step: '05' },
-  { id: 'closing', label: 'Jurnal Penutup', sublabel: 'Closing & Reversing', icon: Lock, step: '06' },
+  { id: 'journal', label: 'Jurnal Umum', sublabel: 'General Journal (JU)', icon: FileText, step: '01' },
+  { id: 'adjusting', label: 'Penyesuaian', sublabel: 'Adjusting Entries (AJP)', icon: Layers, step: '02' },
+  { id: 'ledger', label: 'Buku Besar', sublabel: 'Posting Akun', icon: BookOpen, step: '03' },
+  { id: 'trialBalance', label: 'Neraca Saldo', sublabel: 'Uji Keseimbangan', icon: Scale, step: '04' },
+  { id: 'worksheet', label: 'Kertas Kerja', sublabel: 'Neraca Lajur 10 Kolom', icon: TableProperties, step: '05' },
+  { id: 'financialStatements', label: 'Laporan Keuangan', sublabel: 'Laba Rugi & Neraca', icon: TrendingUp, step: '06' },
+  { id: 'closing', label: 'Jurnal Penutup', sublabel: 'Closing & Reversing', icon: Lock, step: '07' },
   { id: 'aiConsultant', label: 'AI Akuntan', sublabel: 'Konsultan CPA & Soal', icon: Sparkles, step: 'AI' },
   { id: 'coa', label: 'Bagan Akun', sublabel: 'Chart of Accounts', icon: ListTree, step: 'COA' },
   { id: 'calculator', label: 'Kalkulator', sublabel: 'Depresiasi & Rasio', icon: Calculator, step: 'CALC' },
@@ -135,10 +138,17 @@ function MainContent() {
       </div>
 
       {/* Main View Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {activeTab === 'journal' && (
           <JournalView
-            onOpenTransactionModal={handleOpenTransactionModal}
+            onOpenTransactionModal={(tx) => handleOpenTransactionModal(tx, 'umum')}
+            onOpenParser={() => setIsParserModalOpen(true)}
+          />
+        )}
+
+        {activeTab === 'adjusting' && (
+          <AdjustingJournalView
+            onOpenTransactionModal={(tx, defaultCat) => handleOpenTransactionModal(tx, defaultCat || 'penyesuaian')}
             onOpenParser={() => setIsParserModalOpen(true)}
           />
         )}
@@ -165,17 +175,80 @@ function MainContent() {
         {activeTab === 'calculator' && <CalculatorView />}
       </main>
 
+      {/* Mobile iOS / Android Bottom Tab Bar (Responsive, safe area, touch-optimized) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FFFFFF]/95 backdrop-blur-md border-t border-[#E6E0D6] px-1 py-1 flex items-center justify-around shadow-lg safe-area-inset-bottom">
+        <button
+          onClick={() => setActiveTab('journal')}
+          className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg flex-1 min-w-0 transition-colors ${
+            activeTab === 'journal' ? 'text-[#1A1A1A] font-bold' : 'text-[#8C877E]'
+          }`}
+        >
+          <FileText className="w-4 h-4 mb-0.5" />
+          <span className="text-[9px] truncate leading-tight font-medium">Jurnal</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('adjusting')}
+          className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg flex-1 min-w-0 transition-colors ${
+            activeTab === 'adjusting' ? 'text-[#1A1A1A] font-bold' : 'text-[#8C877E]'
+          }`}
+        >
+          <Layers className="w-4 h-4 mb-0.5" />
+          <span className="text-[9px] truncate leading-tight font-medium">AJP</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ledger')}
+          className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg flex-1 min-w-0 transition-colors ${
+            activeTab === 'ledger' ? 'text-[#1A1A1A] font-bold' : 'text-[#8C877E]'
+          }`}
+        >
+          <BookOpen className="w-4 h-4 mb-0.5" />
+          <span className="text-[9px] truncate leading-tight font-medium">Buku Besar</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('worksheet')}
+          className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg flex-1 min-w-0 transition-colors ${
+            activeTab === 'worksheet' ? 'text-[#1A1A1A] font-bold' : 'text-[#8C877E]'
+          }`}
+        >
+          <TableProperties className="w-4 h-4 mb-0.5" />
+          <span className="text-[9px] truncate leading-tight font-medium">Kertas Kerja</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('financialStatements')}
+          className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg flex-1 min-w-0 transition-colors ${
+            activeTab === 'financialStatements' ? 'text-[#1A1A1A] font-bold' : 'text-[#8C877E]'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4 mb-0.5" />
+          <span className="text-[9px] truncate leading-tight font-medium">Laporan</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('aiConsultant')}
+          className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg flex-1 min-w-0 transition-colors ${
+            activeTab === 'aiConsultant' ? 'text-[#166534] font-bold' : 'text-[#8C877E]'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 mb-0.5 text-[#16A34A]" />
+          <span className="text-[9px] truncate leading-tight font-medium">AI</span>
+        </button>
+      </div>
+
       {/* Editorial Footer */}
-      <footer className="bg-[#FFFFFF] border-t border-[#E6E0D6] py-6 text-xs text-[#5C5852] mt-auto">
+      <footer className="bg-[#FFFFFF] border-t border-[#E6E0D6] py-6 pb-24 sm:pb-6 text-xs text-[#5C5852] mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-editorial-serif font-bold text-[#1A1A1A]">NarKuntansi</span>
+          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+            <span className="font-editorial-serif font-bold text-[#1A1A1A]">NarKuntansi by Nadhif A.R</span>
             <span className="text-[#8C877E]">•</span>
             <span>Standar Aktif: <strong className="text-[#1A1A1A]">{standard}</strong></span>
             <span className="text-[#8C877E]">•</span>
             <span>{settings.entityName}</span>
           </div>
-          <div className="text-[#8C877E] text-[11px] font-editorial-mono">
+          <div className="text-[#8C877E] text-[11px] font-editorial-mono text-center sm:text-right">
             Siklus Akuntansi Berpasangan (Double-Entry) Sesuai Standar Akuntansi Keuangan Indonesia
           </div>
         </div>
@@ -189,6 +262,7 @@ function MainContent() {
         editTransaction={txModalEditing}
         accounts={accounts}
         defaultCategory={txModalDefaultCategory}
+        existingTransactions={useAccounting().transactions}
       />
 
       <SmartParserModal
