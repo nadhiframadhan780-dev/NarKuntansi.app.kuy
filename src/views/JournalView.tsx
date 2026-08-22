@@ -3,7 +3,7 @@ import { Plus, Search, Filter, Trash2, Edit2, Sparkles, FileSpreadsheet, AlertCi
 import { useAccounting } from '../context/AccountingContext';
 import { Transaction } from '../types/accounting';
 import { formatRupiah } from '../utils/formatters';
-import { exportSingleSheetToExcel, buildGeneralJournalSheet } from '../utils/excelExporter';
+import { exportSingleJournalToExcel } from '../utils/excelExporter';
 
 interface JournalViewProps {
   onOpenTransactionModal: (tx?: Transaction, defaultCategory?: 'umum' | 'penyesuaian') => void;
@@ -46,8 +46,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
   const isBalanced = totalDebit === totalCredit && totalDebit > 0;
 
   const handleExportJournal = () => {
-    const ws = buildGeneralJournalSheet(transactions, settings, standard);
-    exportSingleSheetToExcel('Jurnal Umum', ws, `Jurnal_Umum_${settings.entityName}.xlsx`);
+    exportSingleJournalToExcel(transactions, settings, standard);
   };
 
   return (
@@ -56,10 +55,10 @@ export const JournalView: React.FC<JournalViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FFFFFF] p-5 sm:p-6 rounded-xl border border-[#E6E0D6] shadow-xs">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-[#1A1A1A] font-editorial-serif tracking-tight">
-            Jurnal Transaksi (General & Adjusting Journal)
+            Jurnal Umum (General Journal - JU)
           </h2>
           <p className="text-xs text-[#5C5852] mt-1 font-editorial-sans">
-            Pencatatan kronologis seluruh bukti transaksi berdasarkan prinsip pembukuan berpasangan (Double-Entry)
+            Pencatatan kronologis transaksi bisnis primer berdasarkan prinsip pembukuan berpasangan (Double-Entry)
           </p>
         </div>
 
@@ -75,7 +74,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
             onClick={() => onOpenTransactionModal(undefined, 'penyesuaian')}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold text-[#1A1A1A] bg-[#EFECE5] hover:bg-[#E5DFD5] border border-[#D3CBC0] transition-colors shadow-2xs"
           >
-            <Plus className="w-4 h-4 text-[#5C5852]" /> + Jurnal Penyesuaian
+            <Plus className="w-4 h-4 text-[#5C5852]" /> + Jurnal Penyesuaian (AJP)
           </button>
 
           <button
